@@ -1,0 +1,27 @@
+.text-grand-hotel {
+  font-family: 'Grand Hotel', 'Roboto', sans-serif;
+}
+
+.small-screen-only {
+  @media (min-width: $breakpoint-sm-min) {
+    display: none;
+  }
+}
+
+.large-screen-only {
+  @media (max-width: $breakpoint-xs-max) {
+    display: none;
+  }
+}
+
+.constrain {
+  max-width: 975px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.constrain-more {
+  max-width: 600px;
+  margin-left: auto;
+  margin-right: auto;
+}

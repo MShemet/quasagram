@@ -51,16 +51,21 @@
     <div class="row justify-center q-ma-md">
       <q-input
         v-model="post.location"
+        :loading="locationLoading"
         label="Location"
         class="col col-sm-6"
         dense
       >
-        <template #append>
+        <template
+          v-if="!locationLoading && locationSupported"
+          #append
+        >
           <q-btn
             round
             dense
             flat
             icon="eva-navigation-2-outline"
+            @click="getLocation"
           />
         </template>
       </q-input>
@@ -84,16 +89,23 @@ import {
   onMounted,
   ref,
   onBeforeUnmount,
+  computed,
 } from 'vue';
 
-import { uid } from 'quasar';
+import { uid, useQuasar } from 'quasar';
+import axios from 'axios';
 
 interface Post {
   id: string;
   caption: string;
   location: string;
-  photo: Blob | File;
+  photo: Blob | File | null;
   date: number;
+}
+
+interface Location {
+  city: string;
+  country?: string;
 }
 
 function dataURItoBlob(dataURI: string): Blob {
@@ -125,6 +137,8 @@ export default defineComponent({
   name: 'CameraPage',
 
   setup() {
+    const $q = useQuasar();
+
     const post = reactive<Post>({
       id: uid(),
       caption: '',
@@ -139,6 +153,11 @@ export default defineComponent({
 
     const imageCaptured = ref(false);
     const hasCameraSuport = ref(true);
+    const locationLoading = ref(false);
+
+    const locationSupported = computed(() => {
+      return 'geolocation' in navigator;
+    });
 
     const initCamera = () => {
       navigator.mediaDevices
@@ -177,7 +196,7 @@ export default defineComponent({
       disableCamera();
     };
 
-    const captureImageFallback = (event: ProgressEvent<FileReader>) => {
+    const captureImageFallback = (event: Event) => {
       const file = (event.currentTarget as HTMLInputElement).files[0];
 
       post.photo = file;
@@ -203,6 +222,37 @@ export default defineComponent({
       reader.readAsDataURL(file);
     };
 
+    const processError = () => {
+      $q.dialog({
+        title: 'Error',
+        message: 'Could not find your location',
+      });
+    };
+
+    const setUserLocation = (position: GeolocationPosition) => {
+      const { latitude, longitude } = position.coords;
+      const apiUrl = `https://geocode.xyz/${latitude},${longitude}?json=1`;
+
+      locationLoading.value = true;
+
+      axios
+        .get(apiUrl)
+        .then((result) => {
+          const { city, country } = result.data as Location;
+          post.location = country ? `${city}, ${country}` : city;
+        })
+        .catch(processError)
+        .finally(() => {
+          locationLoading.value = false;
+        });
+    };
+
+    const getLocation = () => {
+      navigator.geolocation.getCurrentPosition(setUserLocation, processError, {
+        timeout: 7000,
+      });
+    };
+
     onMounted(() => {
       initCamera();
     });
@@ -222,6 +272,9 @@ export default defineComponent({
       hasCameraSuport,
       imageUpload,
       captureImageFallback,
+      getLocation,
+      locationLoading,
+      locationSupported,
     };
   },
 });

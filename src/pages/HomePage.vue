@@ -131,7 +131,7 @@ export default defineComponent({
   setup() {
     const $q = useQuasar();
 
-    let posts = ref<Array<Post>>([]);
+    const posts = ref<Array<Post>>([]);
     const loadingPosts = ref(false);
 
     const formatedPosts = computed(() => {

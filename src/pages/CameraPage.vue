@@ -77,6 +77,7 @@
         rounded
         color="primary"
         label="Post image"
+        @click="addPost"
       />
     </div>
   </q-page>
@@ -253,6 +254,27 @@ export default defineComponent({
       });
     };
 
+    const addPost = async () => {
+      const formData = new FormData();
+
+      formData.append('id', post.id);
+      formData.append('location', post.location);
+      formData.append('caption', post.caption);
+      formData.append('date', String(post.date));
+      formData.append('file', post.photo, post.id + '.png');
+
+      try {
+        const response = await axios.post(
+          `${process.env.API}/createPost`,
+          formData
+        );
+
+        console.log(response);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
     onMounted(() => {
       initCamera();
     });
@@ -275,6 +297,7 @@ export default defineComponent({
       getLocation,
       locationLoading,
       locationSupported,
+      addPost,
     };
   },
 });

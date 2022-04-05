@@ -29,4 +29,10 @@ app.get('/posts', async (request, response) => {
   response.send(posts);
 });
 
+app.post('/createPost', async (request, response) => {
+  response.set('Access-Control-Allow-Origin', '*');
+
+  response.send(request.headers);
+});
+
 app.listen(process.env.PORT || 3000);

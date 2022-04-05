@@ -147,7 +147,7 @@ export default defineComponent({
       loadingPosts.value = true;
 
       try {
-        const response = await axios.get('http://localhost:3000/posts');
+        const response = await axios.get(`${process.env.API}/posts`);
 
         posts.value = response.data as Array<Post>;
       } catch (_error) {

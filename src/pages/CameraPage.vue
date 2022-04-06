@@ -23,6 +23,7 @@
         color="grey-10"
         icon="eva-camera"
         size="lg"
+        :disable="imageCaptured"
         @click="captureImage"
       />
       <q-file
@@ -42,7 +43,7 @@
     <div class="row justify-center q-ma-md">
       <q-input
         v-model="post.caption"
-        label="Caption"
+        label="Caption *"
         class="col col-sm-6"
         dense
       />
@@ -77,6 +78,7 @@
         rounded
         color="primary"
         label="Post image"
+        :disable="!imageCaptured || !post.caption"
         @click="addPost"
       />
     </div>
@@ -93,6 +95,7 @@ import {
   computed,
 } from 'vue';
 
+import { useRouter } from 'vue-router';
 import { uid, useQuasar } from 'quasar';
 import axios from 'axios';
 
@@ -139,6 +142,7 @@ export default defineComponent({
 
   setup() {
     const $q = useQuasar();
+    const router = useRouter();
 
     const post = reactive<Post>({
       id: uid(),
@@ -255,6 +259,8 @@ export default defineComponent({
     };
 
     const addPost = async () => {
+      $q.loading.show();
+
       const formData = new FormData();
 
       formData.append('id', post.id);
@@ -264,15 +270,24 @@ export default defineComponent({
       formData.append('file', post.photo, post.id + '.png');
 
       try {
-        const response = await axios.post(
-          `${process.env.API}/createPost`,
-          formData
-        );
+        await axios.post(`${process.env.API}/createPost`, formData);
 
-        console.log(response);
+        await router.push('/');
+
+        $q.notify({
+          message: 'Post created',
+          color: 'primary',
+          avatar: 'https://cdn.quasar.dev/img/boy-avatar.png',
+          actions: [{ label: 'Dismiss', color: 'white' }],
+        });
       } catch (error) {
-        console.log(error);
+        $q.dialog({
+          title: 'Error',
+          message: 'Sorry, could not create post!',
+        });
       }
+
+      $q.loading.hide();
     };
 
     onMounted(() => {

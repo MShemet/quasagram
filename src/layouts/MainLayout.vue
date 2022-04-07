@@ -41,11 +41,65 @@
     </q-page-container>
 
     <q-footer
-      class="bg-white small-screen-only"
+      class="bg-white"
       bordered
     >
+      <transition
+        appear
+        enter-active-class="animated fadeIn"
+        leave-active-class="animated fadeOut"
+      >
+        <div
+          v-if="showAppInstallBanner"
+          class="bg-primary"
+        >
+          <q-banner
+            inline-actions
+            dense
+            class="bg-primary text-white constrain"
+          >
+            <template #avatar>
+              <q-avatar
+                color="white"
+                text-color="grey-10"
+                icon="eva-camera-outline"
+                font-size="22px"
+              />
+            </template>
+
+            <b>Install Quasagram?</b>
+
+            <template #action>
+              <q-btn
+                flat
+                label="Yes"
+                dense
+                class="q-px-sm"
+                @click="installApp"
+              />
+
+              <q-btn
+                flat
+                label="Later"
+                dense
+                class="q-px-sm"
+                @click="showLaterAppInstall"
+              />
+
+              <q-btn
+                flat
+                label="Never"
+                dense
+                class="q-px-sm"
+                @click="neverShowAppInstallBanner"
+              />
+            </template>
+          </q-banner>
+        </div>
+      </transition>
+
       <q-tabs
-        class="text-grey-10"
+        class="text-grey-10 small-screen-only"
         active-color="primary"
         indicator-color="transparent"
       >
@@ -65,10 +119,66 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue';
+import { defineComponent, ref, onMounted } from 'vue';
+import { useQuasar } from 'quasar';
+import { BeforeInstallPromptEvent } from '../types';
 
 export default defineComponent({
   name: 'MainLayout',
+
+  setup() {
+    const $q = useQuasar();
+    const showAppInstallBanner = ref(false);
+
+    let deferredPrompt: BeforeInstallPromptEvent;
+
+    const showLaterAppInstall = () => {
+      showAppInstallBanner.value = false;
+    };
+
+    const neverShowAppInstallBanner = () => {
+      showAppInstallBanner.value = false;
+
+      $q.localStorage.set('neverShowAppInstallBanner', true);
+    };
+
+    const installApp = async () => {
+      await deferredPrompt.prompt();
+
+      const { outcome } = await deferredPrompt.userChoice;
+
+      if (outcome === 'accepted') {
+        neverShowAppInstallBanner();
+      } else {
+        showAppInstallBanner.value = false;
+      }
+    };
+
+    onMounted(() => {
+      const promptListener = (e: BeforeInstallPromptEvent) => {
+        e.preventDefault();
+
+        deferredPrompt = e;
+
+        setTimeout(() => {
+          showAppInstallBanner.value = true;
+        }, 3000);
+      };
+
+      const isNeverShow = $q.localStorage.getItem('neverShowAppInstallBanner');
+
+      if (!isNeverShow) {
+        window.addEventListener('beforeinstallprompt', promptListener);
+      }
+    });
+
+    return {
+      showAppInstallBanner,
+      installApp,
+      neverShowAppInstallBanner,
+      showLaterAppInstall,
+    };
+  },
 });
 </script>
 

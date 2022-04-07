@@ -143,7 +143,11 @@ module.exports = configure(function (/* ctx */) {
       useCredentialsForManifestTag: false,
       // extendGenerateSWOptions (cfg) {}
       // extendInjectManifestOptions (cfg) {},
-      // extendManifestJson (json) {}
+      extendManifestJson(json) {
+        json.name = 'Quasagram - Share your images';
+        json.description = 'A simple Instagram copy';
+        json.theme_color = '#212121';
+      },
       // extendPWACustomSWConf (esbuildConf) {}
     },
 

@@ -10,7 +10,6 @@ const serviceAccount = require('./serviceAccountKey.json');
 const path = require('path');
 const os = require('os');
 const fs = require('fs');
-const { createDocumentRegistry } = require('typescript');
 
 initializeApp({
   credential: cert(serviceAccount),

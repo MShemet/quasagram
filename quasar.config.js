@@ -42,7 +42,7 @@ module.exports = configure(function (/* ctx */) {
     build: {
       env: {
         API: 'http://localhost:3000',
-        // API: 'https://quasagram-shemet.herokuapp.com/',
+        // API: 'https://quasagram-shemet.herokuapp.com',
       },
       target: {
         browser: ['es2019', 'edge88', 'firefox78', 'chrome87', 'safari13.1'],
@@ -136,7 +136,7 @@ module.exports = configure(function (/* ctx */) {
 
     // https://v2.quasar.dev/quasar-cli-vite/developing-pwa/configuring-pwa
     pwa: {
-      workboxMode: 'generateSW', // or 'injectManifest'
+      workboxMode: 'injectManifest', // 'generateSW' or 'injectManifest'
       injectPwaMetaTags: true,
       swFilename: 'sw.js',
       manifestFilename: 'manifest.json',

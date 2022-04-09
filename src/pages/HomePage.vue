@@ -64,6 +64,7 @@
             class="card-post q-mb-md"
             flat
             bordered
+            :class="{ 'bg-red-1': post.offline }"
           >
             <q-item>
               <q-item-section avatar>
@@ -112,17 +113,26 @@
 import { defineComponent, computed, onMounted, ref } from 'vue';
 import { date, useQuasar } from 'quasar';
 import axios from 'axios';
+import { openDB } from 'idb';
 
 interface Post {
-  id: number;
+  id: string;
   date: number;
   caption: string;
   location: string;
   imageUrl: string;
+  offline?: boolean;
 }
 
 interface FormatedPost extends Omit<Post, 'date'> {
   date: string;
+}
+
+interface DbData {
+  queueName: string;
+  requestData: {
+    url: string;
+  };
 }
 
 export default defineComponent({
@@ -143,7 +153,50 @@ export default defineComponent({
       });
     });
 
-    const getPosts = async () => {
+    const getOfflinePosts = async (): Promise<void> => {
+      try {
+        const db = await openDB('workbox-background-sync');
+        const failedRequests = (await db.getAll('requests')) as DbData[];
+
+        for await (const failedRequest of failedRequests) {
+          console.log('createPostQueue', failedRequest.queueName);
+          if (failedRequest.queueName === 'createPostQueue') {
+            const request = new Request(
+              failedRequest.requestData.url,
+              failedRequest.requestData as RequestInit
+            );
+
+            const formData = await request.formData();
+
+            const offlinePost: Post = {
+              id: formData.get('id') as string,
+              caption: formData.get('caption') as string,
+              location: formData.get('location') as string,
+              date: parseInt(formData.get('date') as string),
+              offline: true,
+              imageUrl: null,
+            };
+
+            const getImage = (fileUrl: Blob): Promise<string> => {
+              return new Promise((resolve) => {
+                const reader = new FileReader();
+
+                reader.readAsDataURL(fileUrl);
+                reader.onloadend = () => resolve(reader.result as string);
+              });
+            };
+
+            offlinePost.imageUrl = await getImage(formData.get('file') as Blob);
+
+            posts.value = [offlinePost, ...posts.value];
+          }
+        }
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    const getPosts = async (): Promise<void> => {
       loadingPosts.value = true;
 
       try {
@@ -155,6 +208,10 @@ export default defineComponent({
           title: 'Error',
           message: 'Could not find any posts',
         });
+      }
+
+      if (!navigator.onLine) {
+        await getOfflinePosts();
       }
 
       loadingPosts.value = false;

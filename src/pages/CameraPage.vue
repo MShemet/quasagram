@@ -164,6 +164,10 @@ export default defineComponent({
       return 'geolocation' in navigator;
     });
 
+    const bgSyncSupported = computed(() => {
+      return 'serviceWorker' in navigator && 'SyncManager' in window;
+    });
+
     const initCamera = () => {
       navigator.mediaDevices
         .getUserMedia({
@@ -272,19 +276,25 @@ export default defineComponent({
       try {
         await axios.post(`${process.env.API}/createPost`, formData);
 
-        await router.push('/');
-
         $q.notify({
           message: 'Post created',
           color: 'primary',
           avatar: 'https://cdn.quasar.dev/img/boy-avatar.png',
           actions: [{ label: 'Dismiss', color: 'white' }],
         });
+
+        await router.push('/');
       } catch (error) {
-        $q.dialog({
-          title: 'Error',
-          message: 'Sorry, could not create post!',
-        });
+        if (navigator.onLine || !bgSyncSupported.value) {
+          $q.dialog({
+            title: 'Error',
+            message: 'Sorry, could not create post!',
+          });
+        } else {
+          $q.notify('Post sreated offline');
+
+          await router.push('/');
+        }
       }
 
       $q.loading.hide();

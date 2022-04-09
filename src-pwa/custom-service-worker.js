@@ -1,34 +1,61 @@
-/*
- * This file (which will be your service worker)
- * is picked up by the build system ONLY if
- * quasar.config.js > pwa > workboxMode is set to "injectManifest"
- */
-
-// import { clientsClaim } from 'workbox-core';
-
+import { precacheAndRoute } from 'workbox-precaching';
+import { registerRoute } from 'workbox-routing';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { CacheableResponsePlugin } from 'workbox-cacheable-response';
 import {
-  precacheAndRoute,
-  // cleanupOutdatedCaches,
-  // createHandlerBoundToURL,
-} from 'workbox-precaching';
+  StaleWhileRevalidate,
+  CacheFirst,
+  NetworkFirst,
+} from 'workbox-strategies';
+import { Queue } from 'workbox-background-sync';
 
-// import { registerRoute, NavigationRoute } from 'workbox-routing';
-
-// self.skipWaiting();
-// clientsClaim();
-
-// Use with precache injection
 precacheAndRoute(self.__WB_MANIFEST);
 
-// cleanupOutdatedCaches();
+registerRoute(
+  ({ url }) => url.host.startsWith('fonts.g'),
+  new CacheFirst({
+    cacheName: 'google-fonts',
+    plugins: [
+      new ExpirationPlugin({
+        maxEntries: 30,
+      }),
+      new CacheableResponsePlugin({
+        statuses: [0, 200],
+      }),
+    ],
+  })
+);
 
-// Non-SSR fallback to index.html
-// Production SSR fallback to offline.html (except for dev)
-// if (process.env.MODE !== 'ssr' || process.env.PROD) {
-//   registerRoute(
-//     new NavigationRoute(
-//       createHandlerBoundToURL(process.env.PWA_FALLBACK_HTML),
-//       { denylist: [/sw\.js$/, /workbox-(.)*\.js$/] }
-//     )
-//   );
-// }
+registerRoute(
+  ({ url }) => url.pathname.startsWith('/posts'),
+  new NetworkFirst()
+);
+
+registerRoute(
+  ({ url }) => url.href.startsWith('http'),
+  new StaleWhileRevalidate()
+);
+
+const bgSyncSupported = 'sync' in self.registration;
+
+if (bgSyncSupported) {
+  const createPostQueue = new Queue('createPostQueue');
+
+  self.addEventListener('fetch', (event) => {
+    if (!event.request.url.endsWith('/createPost')) {
+      return;
+    }
+
+    const bgSyncLogic = async () => {
+      try {
+        const response = await fetch(event.request.clone());
+        return response;
+      } catch (error) {
+        await createPostQueue.pushRequest({ request: event.request });
+        return error;
+      }
+    };
+
+    event.respondWith(bgSyncLogic());
+  });
+}

@@ -1,5 +1,56 @@
 <template>
   <q-page class="constrain q-pa-md">
+    <transition
+      appear
+      enter-active-class="animated fadeIn"
+      leave-active-class="animated fadeOut"
+    >
+      <div
+        v-if="showNotificationsBanner && isPushNotificationsSupported"
+        class="bg-primary"
+      >
+        <q-banner class="bg-grey-4 constrain q-mb-md">
+          <template #avatar>
+            <q-icon
+              color="primary"
+              name="eva-bell-outline"
+            />
+          </template>
+
+          <b>Would you like to enable notifications?</b>
+
+          <template #action>
+            <q-btn
+              flat
+              label="Yes"
+              dense
+              color="primary"
+              class="q-px-sm"
+              @click="enableNotifications"
+            />
+
+            <q-btn
+              flat
+              label="Later"
+              dense
+              color="primary"
+              class="q-px-sm"
+              @click="showLaterNotificationsBanner"
+            />
+
+            <q-btn
+              flat
+              label="Never"
+              dense
+              color="primary"
+              class="q-px-sm"
+              @click="neverShowNotificationsBanner"
+            />
+          </template>
+        </q-banner>
+      </div>
+    </transition>
+
     <div class="row q-col-gutter-lg">
       <div class="col-12 col-sm-8">
         <q-card
@@ -155,9 +206,14 @@ export default defineComponent({
 
     const posts = ref<Array<Post>>([]);
     const loadingPosts = ref(false);
+    const showNotificationsBanner = ref(false);
 
-    const isServiceWprkerSupported = computed(() => {
+    const isServiceWorkerSupported = computed(() => {
       return 'serviceWorker' in navigator;
+    });
+
+    const isPushNotificationsSupported = computed(() => {
+      return 'PushManager' in window;
     });
 
     const formatedPosts = computed(() => {
@@ -234,6 +290,10 @@ export default defineComponent({
     };
 
     const listenForOfflinePostUploadad = () => {
+      if (!isServiceWorkerSupported.value) {
+        return;
+      }
+
       const channel = new BroadcastChannel('sw-messages');
 
       channel.addEventListener('message', (event: MessageEvent<Msg>) => {
@@ -246,10 +306,96 @@ export default defineComponent({
       });
     };
 
-    onMounted(() => {
-      if (isServiceWprkerSupported.value) {
-        listenForOfflinePostUploadad();
+    const showLaterNotificationsBanner = () => {
+      showNotificationsBanner.value = false;
+    };
+
+    const neverShowNotificationsBanner = () => {
+      showNotificationsBanner.value = false;
+
+      $q.localStorage.set('neverShowNotificationsBanner', true);
+    };
+
+    const displayGrantedNotification = () => {
+      // new Notification('New notification!', {
+      //   body: 'Thanks for subscribing',
+      //   icon: 'icons/icon-128x128.png',
+      //   image: 'icons/icon-128x128.png',
+      //   badge: 'icons/icon-128x128.png',
+      //   dir: 'ltr',
+      //   lang: 'en-US',
+      //   vibrate: [100, 50, 200],
+      //   tag: 'confirm-notifications',
+      //   renotify: true,
+      // });
+
+      if (
+        isServiceWorkerSupported.value &&
+        isPushNotificationsSupported.value
+      ) {
+        navigator.serviceWorker.ready
+          .then((swreg) => {
+            return swreg.showNotification('New notification!', {
+              body: 'Thanks for subscribing',
+              icon: 'icons/icon-128x128.png',
+              image: 'icons/icon-128x128.png',
+              badge: 'icons/icon-128x128.png',
+              dir: 'ltr',
+              lang: 'en-US',
+              vibrate: [100, 50, 200],
+              tag: 'confirm-notifications',
+              renotify: true,
+              actions: [
+                {
+                  action: 'hello',
+                  title: 'Hello',
+                  icon: 'icons/icon-128x128.png',
+                },
+                {
+                  action: 'goodby',
+                  title: 'GoodBy',
+                  icon: 'icons/icon-128x128.png',
+                },
+              ],
+            });
+          })
+          .catch((error) => {
+            console.log(error);
+          });
       }
+    };
+
+    const enableNotifications = async (): Promise<void> => {
+      if (!isPushNotificationsSupported.value) {
+        return;
+      }
+
+      try {
+        const permission = await Notification.requestPermission();
+
+        neverShowNotificationsBanner();
+
+        if (permission === 'granted') {
+          displayGrantedNotification();
+        }
+      } catch (error) {
+        console.log('enableNotifications error', error);
+      }
+    };
+
+    const initNotificationBanner = () => {
+      const isNeverShow = $q.localStorage.getItem(
+        'neverShowNotificationsBanner'
+      );
+
+      if (!isNeverShow) {
+        showNotificationsBanner.value = true;
+      }
+    };
+
+    onMounted(() => {
+      listenForOfflinePostUploadad();
+      initNotificationBanner();
     });
 
     onActivated(() => {
@@ -259,6 +405,11 @@ export default defineComponent({
     return {
       formatedPosts,
       loadingPosts,
+      showNotificationsBanner,
+      enableNotifications,
+      showLaterNotificationsBanner,
+      neverShowNotificationsBanner,
+      isPushNotificationsSupported,
     };
   },
 });

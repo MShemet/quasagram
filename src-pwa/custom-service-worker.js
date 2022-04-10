@@ -78,3 +78,17 @@ if (bgSyncSupported) {
     event.respondWith(bgSyncLogic());
   });
 }
+
+self.addEventListener('notificationclick', (event) => {
+  const { notification, action } = event;
+
+  if (action === 'hello') {
+    console.log('hello');
+  } else if (action === 'goodby') {
+    console.log('goodby');
+  } else {
+    console.log('else');
+  }
+
+  notification.close();
+});

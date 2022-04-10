@@ -159,20 +159,21 @@ export default defineComponent({
     };
 
     onMounted(() => {
-      const promptListener = (e: BeforeInstallPromptEvent) => {
-        e.preventDefault();
-
-        deferredPrompt = e;
-
-        setTimeout(() => {
-          showAppInstallBanner.value = true;
-        }, 3000);
-      };
-
       const isNeverShow = $q.localStorage.getItem('neverShowAppInstallBanner');
 
       if (!isNeverShow) {
-        window.addEventListener('beforeinstallprompt', promptListener);
+        window.addEventListener(
+          'beforeinstallprompt',
+          (e: BeforeInstallPromptEvent) => {
+            e.preventDefault();
+
+            deferredPrompt = e;
+
+            setTimeout(() => {
+              showAppInstallBanner.value = true;
+            }, 3000);
+          }
+        );
       }
     });
 

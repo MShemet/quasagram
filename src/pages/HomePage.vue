@@ -66,6 +66,14 @@
             bordered
             :class="{ 'bg-red-1': post.offline }"
           >
+            <q-badge
+              v-if="post.offline"
+              color="red"
+              class="absolute-top-right badge-offline"
+            >
+              Stored offline
+            </q-badge>
+
             <q-item>
               <q-item-section avatar>
                 <q-avatar>
@@ -110,7 +118,7 @@
 </template>
 
 <script lang="ts">
-import { defineComponent, computed, onMounted, ref } from 'vue';
+import { defineComponent, computed, onMounted, ref, onActivated } from 'vue';
 import { date, useQuasar } from 'quasar';
 import axios from 'axios';
 import { openDB } from 'idb';
@@ -135,6 +143,10 @@ interface DbData {
   };
 }
 
+interface Msg {
+  msg: string;
+}
+
 export default defineComponent({
   name: 'HomePage',
 
@@ -143,6 +155,10 @@ export default defineComponent({
 
     const posts = ref<Array<Post>>([]);
     const loadingPosts = ref(false);
+
+    const isServiceWprkerSupported = computed(() => {
+      return 'serviceWorker' in navigator;
+    });
 
     const formatedPosts = computed(() => {
       return posts.value.map((post) => {
@@ -217,7 +233,26 @@ export default defineComponent({
       loadingPosts.value = false;
     };
 
+    const listenForOfflinePostUploadad = () => {
+      const channel = new BroadcastChannel('sw-messages');
+
+      channel.addEventListener('message', (event: MessageEvent<Msg>) => {
+        if (event.data.msg === 'offline-post-uploadad') {
+          posts.value = posts.value.map((post) => ({
+            ...post,
+            offline: false,
+          }));
+        }
+      });
+    };
+
     onMounted(() => {
+      if (isServiceWprkerSupported.value) {
+        listenForOfflinePostUploadad();
+      }
+    });
+
+    onActivated(() => {
       void getPosts();
     });
 
@@ -233,6 +268,10 @@ export default defineComponent({
 .card-post {
   .q-image {
     min-height: 300px;
+  }
+
+  .badge-offline {
+    border-top-left-radius: 0 !important;
   }
 }
 </style>

@@ -1,6 +1,8 @@
 const express = require('express');
+const cors = require('cors');
 const busboy = require('busboy');
 const UUID = require('uuid-v4');
+const bodyParser = require('body-parser');
 
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
@@ -11,6 +13,8 @@ const path = require('path');
 const os = require('os');
 const fs = require('fs');
 
+const jsonParser = bodyParser.json();
+
 initializeApp({
   credential: cert(serviceAccount),
   storageBucket: 'quasagram-5d1dc.appspot.com',
@@ -20,9 +24,9 @@ const app = express();
 const db = getFirestore();
 const bucket = getStorage().bucket();
 
-app.get('/posts', async (request, response) => {
-  response.set('Access-Control-Allow-Origin', '*');
+app.use(cors());
 
+app.get('/posts', async (request, response) => {
   const posts = [];
 
   try {
@@ -39,8 +43,6 @@ app.get('/posts', async (request, response) => {
 });
 
 app.post('/createPost', async (request, response) => {
-  response.set('Access-Control-Allow-Origin', '*');
-
   const bb = busboy({ headers: request.headers });
 
   const uuid = UUID();
@@ -97,6 +99,21 @@ app.post('/createPost', async (request, response) => {
   });
 
   request.pipe(bb);
+});
+
+app.post('/createSubscription', jsonParser, async (request, response) => {
+  const postData = request.body;
+
+  try {
+    await db.collection('subscriptions').add(postData);
+  } catch (error) {
+    console.log(error);
+  }
+
+  response.send({
+    postData,
+    message: 'Subscription added!',
+  });
 });
 
 app.listen(process.env.PORT || 3000);

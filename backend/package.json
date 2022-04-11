@@ -5,15 +5,19 @@
   "main": "index.js",
   "scripts": {
     "start": "nodemon index.js",
-    "deploy": "heroku builds:create --app quasagram-shemet"
+    "deploy": "heroku builds:create --app quasagram-shemet",
+    "web-push": "web-push"
   },
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "body-parser": "^1.20.0",
     "busboy": "^1.5.0",
+    "cors": "^2.8.5",
     "express": "^4.17.3",
     "firebase-admin": "^10.0.2",
     "nodemon": "^2.0.15",
-    "uuid-v4": "^0.1.0"
+    "uuid-v4": "^0.1.0",
+    "web-push": "^3.4.5"
   }
 }

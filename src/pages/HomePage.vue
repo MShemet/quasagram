@@ -365,6 +365,62 @@ export default defineComponent({
       }
     };
 
+    const createPushSubscription = async (reg: ServiceWorkerRegistration) => {
+      const vapidPublicKey =
+        'BDuMZjCz2NQ-69_pKLWoGOyh2PELB7pxKTpcM-pMSQB8KSeJJ7BJbOU58X8MImt9g5p-hnuHuMPSSqpgncX9Rrw';
+
+      try {
+        const newSub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: vapidPublicKey,
+        });
+
+        const newSubData = newSub.toJSON();
+
+        await axios.post(`${process.env.API}/createSubscription`, newSubData);
+
+        displayGrantedNotification();
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    const checkForExistingPushSubscription = () => {
+      // new Notification('New notification!', {
+      //   body: 'Thanks for subscribing',
+      //   icon: 'icons/icon-128x128.png',
+      //   image: 'icons/icon-128x128.png',
+      //   badge: 'icons/icon-128x128.png',
+      //   dir: 'ltr',
+      //   lang: 'en-US',
+      //   vibrate: [100, 50, 200],
+      //   tag: 'confirm-notifications',
+      //   renotify: true,
+      // });
+
+      if (
+        isServiceWorkerSupported.value &&
+        isPushNotificationsSupported.value
+      ) {
+        let reg: ServiceWorkerRegistration;
+
+        navigator.serviceWorker.ready
+          .then((swreg) => {
+            reg = swreg;
+
+            return swreg.pushManager.getSubscription();
+          })
+          .then((sub) => {
+            if (!sub) {
+              void createPushSubscription(reg);
+            }
+          })
+          .catch((error) => {
+            console.log(error);
+          });
+      }
+    };
+
     const enableNotifications = async (): Promise<void> => {
       if (!isPushNotificationsSupported.value) {
         return;
@@ -376,7 +432,8 @@ export default defineComponent({
         neverShowNotificationsBanner();
 
         if (permission === 'granted') {
-          displayGrantedNotification();
+          // displayGrantedNotification();
+          checkForExistingPushSubscription();
         }
       } catch (error) {
         console.log('enableNotifications error', error);

@@ -3,6 +3,7 @@ const cors = require('cors');
 const busboy = require('busboy');
 const UUID = require('uuid-v4');
 const bodyParser = require('body-parser');
+const webpush = require('web-push');
 
 const { initializeApp, cert } = require('firebase-admin/app');
 const { getFirestore } = require('firebase-admin/firestore');
@@ -23,6 +24,18 @@ initializeApp({
 const app = express();
 const db = getFirestore();
 const bucket = getStorage().bucket();
+
+const vapidKeys = {
+  publicKey:
+    'BDuMZjCz2NQ-69_pKLWoGOyh2PELB7pxKTpcM-pMSQB8KSeJJ7BJbOU58X8MImt9g5p-hnuHuMPSSqpgncX9Rrw',
+  privateKey: 'jb-Zc1jyJ_7n6T0it-tT96WcV1T1QfBLWBMDkXZzyo4',
+};
+
+webpush.setVapidDetails(
+  'mailto:test@test.com',
+  vapidKeys.publicKey,
+  vapidKeys.privateKey
+);
 
 app.use(cors());
 
@@ -62,6 +75,42 @@ app.post('/createPost', async (request, response) => {
       });
   };
 
+  const sendPushNotifications = async function () {
+    const subscriptions = [];
+
+    try {
+      const snapshot = await db.collection('subscriptions').get();
+
+      snapshot.forEach((doc) => {
+        subscriptions.push(doc.data());
+      });
+    } catch (error) {
+      console.log(error);
+    }
+
+    const sendSubscription = function (subscription) {
+      const pushSubscription = {
+        endpoint: subscription.endpoint,
+        keys: {
+          auth: subscription.keys.auth,
+          p256dh: subscription.keys.p256dh,
+        },
+      };
+
+      const pushContent = {
+        title: 'New Quasagram post!',
+        body: 'Check it out',
+        openUrl: '/#/',
+      };
+
+      const pushContentStringify = JSON.stringify(pushContent);
+
+      webpush.sendNotification(pushSubscription, pushContentStringify);
+    };
+
+    subscriptions.forEach(sendSubscription);
+  };
+
   bb.on('file', (name, file, info) => {
     const { filename, encoding, mimeType } = info;
 
@@ -91,6 +140,8 @@ app.post('/createPost', async (request, response) => {
       async (err, uploadedFile) => {
         if (!err) {
           await createDocument(uploadedFile);
+
+          await sendPushNotifications();
 
           response.send('Post added: ' + fields.id);
         }

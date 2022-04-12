@@ -65,6 +65,10 @@ if (bgSyncSupported) {
       return;
     }
 
+    if (self.navigator.onLine) {
+      return;
+    }
+
     const bgSyncLogic = async () => {
       try {
         const response = await fetch(event.request.clone());
@@ -87,7 +91,20 @@ self.addEventListener('notificationclick', (event) => {
   } else if (action === 'goodby') {
     console.log('goodby');
   } else {
-    console.log('else');
+    event.waitUntil(
+      clients.matchAll().then((clis) => {
+        const clientUsingApp = clis.find((cli) => {
+          return cli.visibilityState === 'visible';
+        });
+
+        if (clientUsingApp) {
+          clientUsingApp.navigate(notification.data.openUrl);
+          clientUsingApp.focus();
+        } else {
+          clients.openWindow(notification.data.openUrl);
+        }
+      })
+    );
   }
 
   notification.close();
@@ -95,4 +112,23 @@ self.addEventListener('notificationclick', (event) => {
 
 self.addEventListener('notificationclose', (event) => {
   console.log('notificationclose', event);
+});
+
+self.addEventListener('push', (event) => {
+  if (!event.data) {
+    return;
+  }
+
+  const data = JSON.parse(event.data.text());
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: 'icons/icon-128x128.png',
+      badge: 'icons/icon-128x128.png',
+      data: {
+        openUrl: data.openUrl,
+      },
+    })
+  );
 });

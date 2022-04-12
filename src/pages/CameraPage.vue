@@ -274,7 +274,11 @@ export default defineComponent({
       formData.append('file', post.photo, post.id + '.png');
 
       try {
-        await axios.post(`${process.env.API}/createPost`, formData);
+        await axios.post(`${process.env.API}/createPost`, formData, {
+          headers: {
+            'Access-Control-Allow-Origin': '*',
+          },
+        });
 
         $q.notify({
           message: 'Post created',
